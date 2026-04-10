@@ -6,6 +6,13 @@ Kubernetes Fault Injection Benchmark — test any K8s monitoring/remediation age
 
 Spins up a local cluster, injects known issues one by one, and scores your agent on detection rate, fix rate, and response time.
 
+---
+
+> **Want an agent that actually fixes these?**
+> [kubeagent](https://kubeagent.net) is an AI-powered Kubernetes monitoring and auto-remediation agent that detects and fixes cluster issues autonomously. kubebench is the benchmark suite built to score it — and any other agent you want to put to the test.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -155,6 +162,22 @@ scenario_cleanup() {
 Reports are saved to `reports/<timestamp>/`:
 - `report.json` — full results with per-scenario details
 - `logs/scenario-NN.log` — agent output captured during each scenario
+
+## Resource Requirements
+
+kubebench runs a 3-node local cluster (1 server + 2 agents) and injects workloads one scenario at a time.
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| RAM | 6 GB | 8 GB+ |
+| CPU | 2 cores | 4 cores |
+| Disk | 5 GB | 10 GB |
+
+The 6 GB RAM floor accounts for: ~2 GB cluster overhead (k3d/k3s + system pods) + ~2 GB for the memory-pressure stress scenario (scenario 35 allocates 1.5 GB per node via DaemonSet) + ~2 GB for the host OS. Running below this risks the host OOMing rather than the cluster nodes.
+
+Most scenarios are lightweight (nginx/busybox, 64 Mi memory limit, 100m CPU). The exceptions are:
+- **Scenario 35** (`node-memory-pressure`) — allocates 1.5 GB per node intentionally
+- **Scenario 44** (`deploy-hpa-overscale`) — attempts to schedule 50 pods simultaneously
 
 ## Prerequisites
 
