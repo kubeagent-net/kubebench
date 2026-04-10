@@ -1,5 +1,7 @@
 # kubebench
 
+[![CI](https://github.com/kubeagent-net/kubebench/actions/workflows/ci.yml/badge.svg)](https://github.com/kubeagent-net/kubebench/actions/workflows/ci.yml)
+
 Kubernetes Fault Injection Benchmark — test any K8s monitoring/remediation agent against 50 real fault scenarios.
 
 Spins up a local cluster, injects known issues one by one, and scores your agent on detection rate, fix rate, and response time.
@@ -62,6 +64,7 @@ Options:
   --agent-interval SEC          Agent poll interval in seconds (default: 15)
   --cluster-name NAME           Cluster name (default: kubebench)
   --keep-cluster                Don't delete cluster after run
+  --context CONTEXT              Use existing cluster (skip create/delete)
   --report-dir DIR              Report output directory
   --verbose                     Verbose output
 ```
@@ -84,6 +87,9 @@ Options:
 # Keep cluster alive for manual inspection
 ./kubebench.sh --agent manual --scenario 1 --keep-cluster
 # Then: kubectl --context=k3d-kubebench get pods -A
+
+# Run against an existing cluster
+./kubebench.sh --context my-cluster --agent manual
 ```
 
 ## Adding a Custom Agent

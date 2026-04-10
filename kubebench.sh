@@ -19,6 +19,7 @@ DETECT_ONLY=false
 VERBOSE=false
 SCENARIO_FILTER=""
 CATEGORY_FILTER=""
+EXISTING_CONTEXT=""
 
 usage() {
   cat <<EOF
@@ -38,6 +39,7 @@ Options:
   --cluster-name NAME           Cluster name (default: kubebench)
   --keep-cluster                Don't delete cluster after run
   --report-dir DIR              Report output directory
+  --context CONTEXT              Use existing cluster (skip create/delete)
   --verbose                     Verbose output
   -h, --help                    Show this help
 
@@ -53,6 +55,7 @@ Examples:
   ./kubebench.sh --scenario 9-12                # Run OOM scenarios only
   ./kubebench.sh --category pod --detect-only   # Detection-only for pod scenarios
   ./kubebench.sh --provider kind                # Use kind instead of k3d
+  ./kubebench.sh --context my-cluster           # Use an existing cluster
 EOF
   exit 0
 }
@@ -70,6 +73,7 @@ while [ $# -gt 0 ]; do
     --agent-interval) AGENT_INTERVAL="$2"; shift 2 ;;
     --cluster-name) CLUSTER_NAME="$2"; shift 2 ;;
     --keep-cluster) KEEP_CLUSTER=true; shift ;;
+    --context) EXISTING_CONTEXT="$2"; shift 2 ;;
     --report-dir) REPORT_DIR="$2"; shift 2 ;;
     --verbose) VERBOSE=true; shift ;;
     -h|--help) usage ;;
@@ -79,6 +83,7 @@ done
 
 export PROVIDER AGENT CLUSTER_NAME PRECONDITION_TIMEOUT POSTCONDITION_TIMEOUT
 export AGENT_INTERVAL REPORT_DIR KEEP_CLUSTER DETECT_ONLY VERBOSE KUBEBENCH_DIR
+export EXISTING_CONTEXT
 
 # Source libraries
 source "${KUBEBENCH_DIR}/lib/util.sh"
@@ -97,9 +102,11 @@ source "$AGENT_FILE"
 # Check prerequisites
 log_info "kubebench v${KUBEBENCH_VERSION}"
 require_cmd kubectl
-require_cmd docker
 require_cmd jq
-require_cmd "$PROVIDER"
+if [ -z "$EXISTING_CONTEXT" ]; then
+  require_cmd docker
+  require_cmd "$PROVIDER"
+fi
 
 # Collect scenarios
 collect_scenarios() {
@@ -154,7 +161,7 @@ collect_scenarios() {
 # Cleanup handler
 cleanup_on_exit() {
   agent_stop 2>/dev/null || true
-  if [ "$KEEP_CLUSTER" = "false" ]; then
+  if [ -z "$EXISTING_CONTEXT" ] && [ "$KEEP_CLUSTER" = "false" ]; then
     cluster_delete 2>/dev/null || true
   else
     log_info "Cluster kept: kubectl --context=${KUBEBENCH_CONTEXT:-unknown}"
@@ -173,10 +180,25 @@ echo -e "${BOLD}  kubebench v${KUBEBENCH_VERSION}${NC}"
 echo -e "  Provider: ${PROVIDER} | Agent: ${AGENT} | Cluster: ${CLUSTER_NAME}"
 echo ""
 
-# 1. Create cluster
-cluster_create
-cluster_wait_ready
-cluster_build_images
+# 1. Create cluster (or use existing)
+if [ -n "$EXISTING_CONTEXT" ]; then
+  KUBEBENCH_CONTEXT="$EXISTING_CONTEXT"
+  export KUBEBENCH_CONTEXT
+  log_ok "Using existing cluster context: ${KUBEBENCH_CONTEXT}"
+  # Verify context works
+  if ! kubectl cluster-info --context="$KUBEBENCH_CONTEXT" &>/dev/null; then
+    log_error "Cannot connect to cluster context: $KUBEBENCH_CONTEXT"
+    exit 1
+  fi
+  # Still build fixture images if docker is available
+  if command -v docker &>/dev/null; then
+    cluster_build_images
+  fi
+else
+  cluster_create
+  cluster_wait_ready
+  cluster_build_images
+fi
 
 # 2. Set up agent
 agent_setup
