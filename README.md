@@ -16,14 +16,14 @@ Spins up a local cluster, injects known issues one by one, and scores your agent
 ## Quick Start
 
 ```bash
-# Install all requirements automatically (macOS & Linux)
+# Install kubebench and all requirements (macOS & Linux, x86_64 & ARM64)
 curl -fsSL https://raw.githubusercontent.com/kubeagent-net/kubebench/main/install.sh | bash
 
 # Run the full benchmark with kubeagent
-./kubebench.sh
+kubebench
 
 # Or inject faults without an agent (manual observation)
-./kubebench.sh --agent manual --keep-cluster
+kubebench --agent manual --keep-cluster
 ```
 
 ## What It Does
@@ -80,23 +80,23 @@ Options:
 
 ```bash
 # Full benchmark
-./kubebench.sh
+kubebench
 
 # Only OOM scenarios
-./kubebench.sh --scenario 9-12
+kubebench --scenario 9-12
 
 # Only pod scenarios, detection only
-./kubebench.sh --category pod --detect-only
+kubebench --category pod --detect-only
 
 # Use kind instead of k3d
-./kubebench.sh --provider kind
+kubebench --provider kind
 
 # Keep cluster alive for manual inspection
-./kubebench.sh --agent manual --scenario 1 --keep-cluster
+kubebench --agent manual --scenario 1 --keep-cluster
 # Then: kubectl --context=k3d-kubebench get pods -A
 
 # Run against an existing cluster
-./kubebench.sh --context my-cluster --agent manual
+kubebench --context my-cluster --agent manual
 ```
 
 ## Adding a Custom Agent
@@ -111,7 +111,7 @@ agent_stop()       # Stop the agent process
 agent_is_running() # Return 0 if agent is alive
 ```
 
-Then run: `./kubebench.sh --agent your-agent`
+Then run: `kubebench --agent your-agent`
 
 See `agents/kubeagent.sh` for a full example.
 
@@ -187,7 +187,7 @@ Run the install script to set everything up automatically (macOS & Linux, x86_64
 curl -fsSL https://raw.githubusercontent.com/kubeagent-net/kubebench/main/install.sh | bash
 ```
 
-The script detects your OS and package manager, installs to `/usr/local/bin` when running as root or `~/.local/bin` otherwise, and updates `$PATH` in the current session — no shell restart needed.
+The script installs all dependencies, clones kubebench to `/opt/kubebench`, and puts a `kubebench` wrapper in `/usr/local/bin` so you can run it from anywhere.
 
 Or install manually:
 
