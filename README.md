@@ -181,11 +181,13 @@ Most scenarios are lightweight (nginx/busybox, 64 Mi memory limit, 100m CPU). Th
 
 ## Prerequisites
 
-Run the install script to set everything up automatically:
+Run the install script to set everything up automatically (macOS & Linux, x86_64 & ARM64):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kubeagent-net/kubebench/main/install.sh | bash
 ```
+
+The script detects your OS and package manager, installs to `/usr/local/bin` when running as root or `~/.local/bin` otherwise, and updates `$PATH` in the current session — no shell restart needed.
 
 Or install manually:
 
