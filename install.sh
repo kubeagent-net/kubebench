@@ -63,8 +63,10 @@ else
     warn "Docker Desktop installed. Please start it before running kubebench."
   elif has apt-get; then
     curl -fsSL https://get.docker.com | sudo sh
-    sudo usermod -aG docker "$USER" 2>/dev/null || true
-    warn "Docker installed. You may need to log out and back in for group membership to take effect."
+    if [ "$(id -u)" != "0" ]; then
+      sudo usermod -aG docker "$USER" 2>/dev/null || true
+      warn "Docker installed. You may need to log out and back in for group membership to take effect."
+    fi
   else
     $PKG docker
     sudo systemctl enable --now docker 2>/dev/null || true
@@ -80,14 +82,19 @@ else
   if [ "$OS" = "macos" ]; then
     brew install kubectl
   else
-    local_bin="$HOME/.local/bin"
-    mkdir -p "$local_bin"
-    KUBE_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-    curl -fsSL "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/amd64/kubectl" -o "$local_bin/kubectl"
-    chmod +x "$local_bin/kubectl"
-    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
-      warn "Add $local_bin to your PATH: export PATH=\"\$PATH:$local_bin\""
+    # Install to /usr/local/bin when root, ~/.local/bin otherwise
+    if [ "$(id -u)" = "0" ]; then
+      kubectl_bin="/usr/local/bin"
+    else
+      kubectl_bin="$HOME/.local/bin"
+      mkdir -p "$kubectl_bin"
     fi
+    KUBE_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+    ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH="arm64" || ARCH="amd64"
+    curl -fsSL "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${ARCH}/kubectl" -o "$kubectl_bin/kubectl"
+    chmod +x "$kubectl_bin/kubectl"
+    # Make available in current session
+    export PATH="$kubectl_bin:$PATH"
   fi
   ok "kubectl installed"
 fi
