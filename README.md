@@ -9,8 +9,8 @@ Spins up a local cluster, injects known issues one by one, and scores your agent
 ## Quick Start
 
 ```bash
-# Prerequisites: docker, kubectl, k3d (or kind), jq
-brew install k3d jq  # macOS
+# Install all requirements automatically (macOS & Linux)
+curl -fsSL https://raw.githubusercontent.com/kubeagent-net/kubebench/main/install.sh | bash
 
 # Run the full benchmark with kubeagent
 ./kubebench.sh
@@ -158,11 +158,21 @@ Reports are saved to `reports/<timestamp>/`:
 
 ## Prerequisites
 
-- `bash` 4.0+
-- `docker`
-- `kubectl`
-- `k3d` or `kind`
-- `jq`
+Run the install script to set everything up automatically:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kubeagent-net/kubebench/main/install.sh | bash
+```
+
+Or install manually:
+
+| Tool | macOS | Linux |
+|------|-------|-------|
+| `bash` 4.0+ | built-in | built-in |
+| `docker` | [Docker Desktop](https://docs.docker.com/desktop/mac/) | `curl -fsSL https://get.docker.com \| sh` |
+| `kubectl` | `brew install kubectl` | [kubernetes.io/docs](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/) |
+| `k3d` | `brew install k3d` | `curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh \| bash` |
+| `jq` | `brew install jq` | `apt install jq` / `dnf install jq` |
 
 For the kubeagent adapter:
 - `kubeagent login` (must be authenticated)
