@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+SCENARIO_ID=18
+SCENARIO_NAME="pending-memory"
+SCENARIO_CATEGORY="pod"
+SCENARIO_ISSUE_KIND="pod_pending"
+SCENARIO_DESCRIPTION="Pod requests 999Gi memory (unschedulable)"
+SCENARIO_FIXABLE="no"
+SCENARIO_DETECT_ONLY="yes"
+SCENARIO_EXPECTED_FIX=""
+
+scenario_inject() {
+  local ns=$1
+  kubectl apply --context="$KUBEBENCH_CONTEXT" -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greedy-mem
+  namespace: $ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greedy-mem
+  template:
+    metadata:
+      labels:
+        app: greedy-mem
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27-alpine
+        resources:
+          requests:
+            memory: "999Gi"
+          limits:
+            cpu: "100m"
+EOF
+}
+
+scenario_precondition() {
+  local ns=$1
+  kubectl get pods -n "$ns" --context="$KUBEBENCH_CONTEXT" -o json \
+    | jq -e '.items[] | select(.status.phase == "Pending")' >/dev/null
+}
+
+scenario_postcondition() { return 1; }

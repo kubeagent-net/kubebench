@@ -1,0 +1,4 @@
+FROM python:3.12-alpine
+RUN printf 'import time, http.server\ntime.sleep(60)\nhttp.server.HTTPServer(("",8080), http.server.SimpleHTTPRequestHandler).serve_forever()\n' > /app.py
+EXPOSE 8080
+CMD ["python", "/app.py"]
