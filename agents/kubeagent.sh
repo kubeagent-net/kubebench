@@ -50,29 +50,38 @@ CFGEOF
   else
     # Check if context already exists
     if ! grep -q "${KUBEBENCH_CONTEXT}" "$config_file" 2>/dev/null; then
-      # Backup original config
+      # Backup original config (mode 600 to protect any credentials inside)
       cp "$config_file" "${config_file}.kubebench-backup"
+      chmod 600 "${config_file}.kubebench-backup"
 
       if command -v yq &>/dev/null; then
-        yq -i ".clusters += [{\"context\": \"${KUBEBENCH_CONTEXT}\", \"interval\": ${AGENT_INTERVAL:-15}, \"codepaths\": []}]" "$config_file"
+        # Use env() so cluster name / interval are never interpolated into the yq expression
+        KUBEBENCH_CTX_VAL="$KUBEBENCH_CONTEXT" KUBEBENCH_INT_VAL="${AGENT_INTERVAL:-15}" \
+          yq -i '.clusters += [{"context": env(KUBEBENCH_CTX_VAL), "interval": env(KUBEBENCH_INT_VAL) | tonumber, "codepaths": []}]' \
+          "$config_file"
       else
-        # Append context using a temp file approach
+        # Pass values via environment so they are never injected into Python source
         local tmp
         tmp=$(mktemp)
-        python3 -c "
-import yaml, sys
-with open('$config_file') as f:
+        _KB_CFG="$config_file" _KB_CTX="$KUBEBENCH_CONTEXT" \
+          _KB_INT="${AGENT_INTERVAL:-15}" _KB_TMP="$tmp" \
+          python3 -c '
+import yaml, os
+cfg_path = os.environ["_KB_CFG"]
+context  = os.environ["_KB_CTX"]
+interval = int(os.environ["_KB_INT"])
+tmp_path = os.environ["_KB_TMP"]
+with open(cfg_path) as f:
     cfg = yaml.safe_load(f) or {}
-clusters = cfg.get('clusters', [])
-clusters.append({'context': '${KUBEBENCH_CONTEXT}', 'interval': ${AGENT_INTERVAL:-15}, 'codepaths': []})
-cfg['clusters'] = clusters
-with open('$tmp', 'w') as f:
+clusters = cfg.get("clusters", [])
+clusters.append({"context": context, "interval": interval, "codepaths": []})
+cfg["clusters"] = clusters
+with open(tmp_path, "w") as f:
     yaml.dump(cfg, f, default_flow_style=False)
-" 2>/dev/null && mv "$tmp" "$config_file" || {
-          # Fallback: just append a cluster entry
-          echo "  - context: \"${KUBEBENCH_CONTEXT}\"" >> "$config_file"
-          echo "    interval: ${AGENT_INTERVAL:-15}" >> "$config_file"
-          echo "    codepaths: []" >> "$config_file"
+' 2>/dev/null && mv "$tmp" "$config_file" || {
+          # Fallback: append a cluster entry (inputs are validated to safe chars upstream)
+          printf '  - context: "%s"\n    interval: %s\n    codepaths: []\n' \
+            "$KUBEBENCH_CONTEXT" "${AGENT_INTERVAL:-15}" >> "$config_file"
         }
       fi
       log_ok "Added ${KUBEBENCH_CONTEXT} to kubeagent config (backup: config.yaml.kubebench-backup)"

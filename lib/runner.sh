@@ -113,28 +113,22 @@ runner_execute_one() {
 
 runner_record_result() {
   local status=$1 pre_time=$2 fix_time=$3
-
-  # Escape description for JSON
-  local escaped_desc
-  escaped_desc=$(echo "$SCENARIO_DESCRIPTION" | sed 's/"/\\"/g')
-
   local entry
-  entry=$(cat <<JSONEOF
-{
-  "id": ${SCENARIO_ID},
-  "name": "${SCENARIO_NAME}",
-  "category": "${SCENARIO_CATEGORY}",
-  "issue_kind": "${SCENARIO_ISSUE_KIND}",
-  "description": "${escaped_desc}",
-  "fixable": "${SCENARIO_FIXABLE}",
-  "expected_fix": "${SCENARIO_EXPECTED_FIX}",
-  "result": "${status}",
-  "precondition_time_s": ${pre_time},
-  "fix_time_s": ${fix_time}
-}
-JSONEOF
-)
-  RESULTS_JSON=$(echo "$RESULTS_JSON" | jq --argjson e "$entry" '. + [$e]')
+  entry=$(jq -n \
+    --argjson id       "$SCENARIO_ID" \
+    --arg     name     "$SCENARIO_NAME" \
+    --arg     category "$SCENARIO_CATEGORY" \
+    --arg     kind     "$SCENARIO_ISSUE_KIND" \
+    --arg     desc     "$SCENARIO_DESCRIPTION" \
+    --arg     fixable  "$SCENARIO_FIXABLE" \
+    --arg     fix      "$SCENARIO_EXPECTED_FIX" \
+    --arg     result   "$status" \
+    --argjson pre      "$pre_time" \
+    --argjson post     "$fix_time" \
+    '{id:$id,name:$name,category:$category,issue_kind:$kind,description:$desc,
+      fixable:$fixable,expected_fix:$fix,result:$result,
+      precondition_time_s:$pre,fix_time_s:$post}')
+  RESULTS_JSON=$(printf '%s' "$RESULTS_JSON" | jq --argjson e "$entry" '. + [$e]')
 }
 
 runner_cleanup() {

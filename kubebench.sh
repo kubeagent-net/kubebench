@@ -81,6 +81,32 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# Validate user-controlled values that get interpolated into code/YAML/expressions
+_validate_identifier() {
+  local name=$1 val=$2
+  if [[ ! "$val" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "[ERROR] Invalid ${name}: '${val}' — only letters, digits, -, _, . allowed" >&2; exit 1
+  fi
+}
+_validate_uint() {
+  local name=$1 val=$2
+  if [[ ! "$val" =~ ^[0-9]+$ ]]; then
+    echo "[ERROR] Invalid ${name}: '${val}' — must be a positive integer" >&2; exit 1
+  fi
+}
+_validate_context() {
+  local name=$1 val=$2
+  if [[ ! "$val" =~ ^[A-Za-z0-9_./@:-]+$ ]]; then
+    echo "[ERROR] Invalid ${name}: '${val}' — contains disallowed characters" >&2; exit 1
+  fi
+}
+
+_validate_identifier  "cluster-name"           "$CLUSTER_NAME"
+_validate_uint        "precondition-timeout"   "$PRECONDITION_TIMEOUT"
+_validate_uint        "postcondition-timeout"  "$POSTCONDITION_TIMEOUT"
+_validate_uint        "agent-interval"         "$AGENT_INTERVAL"
+[ -n "$EXISTING_CONTEXT" ] && _validate_context "context" "$EXISTING_CONTEXT"
+
 export PROVIDER AGENT CLUSTER_NAME PRECONDITION_TIMEOUT POSTCONDITION_TIMEOUT
 export AGENT_INTERVAL REPORT_DIR KEEP_CLUSTER DETECT_ONLY VERBOSE KUBEBENCH_DIR
 export EXISTING_CONTEXT

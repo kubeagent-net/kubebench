@@ -105,8 +105,16 @@ else
   else
     KUBE_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
     ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH="arm64" || ARCH="amd64"
-    curl -fsSL "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${ARCH}/kubectl" -o /usr/local/bin/kubectl
-    chmod +x /usr/local/bin/kubectl
+    KUBE_URL="https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${ARCH}/kubectl"
+    tmp_kube=$(mktemp)
+    curl -fsSL "$KUBE_URL" -o "$tmp_kube"
+    expected_sum=$(curl -fsSL "${KUBE_URL}.sha256")
+    echo "${expected_sum}  ${tmp_kube}" | sha256sum -c - || {
+      rm -f "$tmp_kube"
+      die "kubectl checksum mismatch — aborting"
+    }
+    maybe_sudo install -m 0755 "$tmp_kube" /usr/local/bin/kubectl
+    rm -f "$tmp_kube"
   fi
   ok "kubectl installed"
 fi
